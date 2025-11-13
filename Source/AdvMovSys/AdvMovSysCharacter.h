@@ -81,9 +81,18 @@ protected:
 	void DoProne(const FInputActionValue& Value);
 	void Prone();
 	void UnProne();
+	void Slide();
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
+
+private:
+	float CrouchedHeight = 96.0f;
+	float PronedHeight = 20.0f;
+	float NormalWalkSpeed = 500.0f;
+	float WalkWalkSpeed = 200.0f;
+	float SprintWalkSpeed = 800.0f;
+	float PronedWalkSpeed = 100.0f;
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")

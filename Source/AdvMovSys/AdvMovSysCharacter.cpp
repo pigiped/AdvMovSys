@@ -30,7 +30,7 @@ AAdvMovSysCharacter::AAdvMovSysCharacter()
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
@@ -103,12 +103,12 @@ void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
 	{
 		if (GetCharacterMovement()->IsMovingOnGround())
 		{
-			GetCharacterMovement()->MaxWalkSpeed = 200.0f;
+			GetCharacterMovement()->MaxWalkSpeed = WalkWalkSpeed;
 		}
 	}
 	else
 	{
-		GetCharacterMovement()->MaxWalkSpeed = 500.0f;
+		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 	}
 }
 
@@ -120,12 +120,12 @@ void AAdvMovSysCharacter::Sprint(const FInputActionValue& Value)
 	{
 		if (GetCharacterMovement()->IsMovingOnGround())
 		{
-			GetCharacterMovement()->MaxWalkSpeed = 800.0f;
+			GetCharacterMovement()->MaxWalkSpeed = SprintWalkSpeed;
 		}
 	}
 	else
 	{
-		GetCharacterMovement()->MaxWalkSpeed = 500.0f;
+		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 	}
 }
 
@@ -151,11 +151,12 @@ void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 					return;
 				}
 				UnCrouch();
-				GetCharacterMovement()->MaxWalkSpeed = 600.0f;
 				GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnCrouch"));
 			}
 		}
 	}
+	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+
 }
 
 void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
@@ -180,21 +181,33 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::Prone()
 {
-	Crouch();
+	if (!bIsCrouched) return;
 	bIsProne = true;
-	GetCapsuleComponent()->SetCapsuleHalfHeight(34.0f);
-	GetCharacterMovement()->MaxWalkSpeed = 100.0f;
+	GetCapsuleComponent()->SetCapsuleHalfHeight(PronedHeight);
+	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
+	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	GetCharacterMovement()->MaxWalkSpeed = PronedWalkSpeed;
+
+	RecalculateBaseEyeHeight();
 
 	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Prone"));
 }
 
 void AAdvMovSysCharacter::UnProne()
 {
-	// Esci da prone - verifica spazio sopra
-	/*FVector Start = GetActorLocation();
-	FVector End = Start;
-	float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
-	float TargetHalfHeight = 96.0f;
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!Capsule) return;
+
+	const FVector ActorLoc = GetActorLocation(); // actor/capsule center
+	const float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	const float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
+	const float TargetHalfHeight = CrouchedHeight; // desired half height after unprone
+
+	// Compute sweep start (current capsule center) and end (moved up so capsule center ends at target half-height)
+	// If target is taller than current, move the capsule center up by the difference.
+	FVector Start = ActorLoc;
+	const float HalfHeightDiff = TargetHalfHeight - CurrentHalfHeight;
+	FVector End = Start + FVector(0.f, 0.f, FMath::Max(HalfHeightDiff, 0.0f) + 1.0f); // +1cm safety offset
 
 	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ProneTrace), false, this);
 
@@ -205,17 +218,32 @@ void AAdvMovSysCharacter::UnProne()
 		QueryParams
 	);
 
+	// Debug visualization
+	const float LifeTime = 5.0f;            // how long the debug shapes persist (seconds)
+	const float Thickness = 2.0f;           // line/capsule thickness
+	const FColor StartColor = FColor::Blue; // current capsule
+	const FColor EndColor = bBlocked ? FColor::Red : FColor::Green; // result capsule color
+
+	// Draw current capsule at Start (uses current half-height)
+	DrawDebugCapsule(GetWorld(), Start, CurrentHalfHeight, CapsuleRadius, FQuat::Identity, StartColor, false, LifeTime, 0, Thickness);
+	// Draw target capsule at End (uses target half-height)
+	DrawDebugCapsule(GetWorld(), End, TargetHalfHeight, CapsuleRadius, FQuat::Identity, EndColor, false, LifeTime, 0, Thickness);
+	// Draw a line between capsule centers so you can see sweep direction/length
+	DrawDebugLine(GetWorld(), Start, End, EndColor, false, LifeTime, 0, Thickness);
+
+	UE_LOG(LogTemp, Display, TEXT("UnProne sweep: Start Z=%f  End Z=%f  Blocked=%s"), Start.Z, End.Z, bBlocked ? TEXT("true") : TEXT("false"));
+
 	if (!bBlocked)
 	{
 		bIsProne = false;
-		GetCapsuleComponent()->SetCapsuleHalfHeight(96.0f);
-		GetCharacterMovement()->MaxWalkSpeed = 500.0f;
+		Capsule->SetCapsuleHalfHeight(CrouchedHeight);
+		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
-	}*/
-	bIsProne = false;
-	GetCapsuleComponent()->SetCapsuleHalfHeight(40.0f);
-	GetCharacterMovement()->MaxWalkSpeed = 200.0f;
-	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
+	}
+}
+
+void AAdvMovSysCharacter::Slide()
+{
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)
