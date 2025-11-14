@@ -244,6 +244,10 @@ void AAdvMovSysCharacter::UnProne()
 
 void AAdvMovSysCharacter::Slide()
 {
+	if(GetCharacterMovement()->IsMovingOnGround())
+		bIsSliding = true;
+	else
+		bIsSliding = false;
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)

@@ -98,6 +98,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
 	bool bIsProne = false;
 
+	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
+	bool bIsSliding = false;
+
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoMove(float Right, float Forward);
