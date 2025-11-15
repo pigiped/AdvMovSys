@@ -15,7 +15,7 @@
 AAdvMovSysCharacter::AAdvMovSysCharacter()
 {
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(42.f, 96.0f);
+	GetCapsuleComponent()->InitCapsuleSize(20.f, StandingHeight);
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -66,6 +66,8 @@ void AAdvMovSysCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Sprint);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoCrouch);
 		EnhancedInputComponent->BindAction(ProneAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoProne);
+		EnhancedInputComponent->BindAction(SlideAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Slide);
+
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Look);
@@ -93,6 +95,19 @@ void AAdvMovSysCharacter::Look(const FInputActionValue& Value)
 
 	// route the input
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
+}
+
+void AAdvMovSysCharacter::RecalculateCapsuleHalfHeight(float NewHalfHeight)
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!Capsule) return;
+	float PresentHeight = Capsule->GetScaledCapsuleHalfHeight();
+	float OldZ = GetMesh()->GetRelativeLocation().Z;
+	Capsule->SetCapsuleHalfHeight(NewHalfHeight);
+	FVector NewLocation = GetMesh()->GetRelativeLocation();
+	NewLocation.Z += (PresentHeight-NewHalfHeight);
+	GetMesh()->SetRelativeLocation(NewLocation);
+	UE_LOG(LogTemp, Display, TEXT("Passing from %f to %f, newLocation is %f, before it was: %f"), PresentHeight, NewHalfHeight, NewLocation.Z, OldZ);
 }
 
 void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
@@ -135,7 +150,7 @@ void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 
 	if (ShouldCrouchInput)
 	{
-		if (GetCharacterMovement()->IsMovingOnGround())
+		if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
 		{
 			if (!bIsCrouched)
 			{
@@ -183,9 +198,7 @@ void AAdvMovSysCharacter::Prone()
 {
 	if (!bIsCrouched) return;
 	bIsProne = true;
-	GetCapsuleComponent()->SetCapsuleHalfHeight(PronedHeight);
-	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
-	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	RecalculateCapsuleHalfHeight(PronedHeight);
 	GetCharacterMovement()->MaxWalkSpeed = PronedWalkSpeed;
 
 	RecalculateBaseEyeHeight();
@@ -198,56 +211,79 @@ void AAdvMovSysCharacter::UnProne()
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (!Capsule) return;
 
-	const FVector ActorLoc = GetActorLocation(); // actor/capsule center
-	const float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-	const float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
-	const float TargetHalfHeight = CrouchedHeight; // desired half height after unprone
+	FVector Start = GetActorLocation() - FVector(0,0,Capsule->GetScaledCapsuleRadius());
+	FVector End = Start + FVector(0.f, 0.f, CrouchedHeight);
+	
+	//Debug Line
+	bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
 
-	// Compute sweep start (current capsule center) and end (moved up so capsule center ends at target half-height)
-	// If target is taller than current, move the capsule center up by the difference.
-	FVector Start = ActorLoc;
-	const float HalfHeightDiff = TargetHalfHeight - CurrentHalfHeight;
-	FVector End = Start + FVector(0.f, 0.f, FMath::Max(HalfHeightDiff, 0.0f) + 1.0f); // +1cm safety offset
-
-	FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(ProneTrace), false, this);
-
-	const bool bBlocked = GetWorld()->SweepTestByChannel(
-		Start, End, FQuat::Identity,
-		ECC_Pawn,
-		FCollisionShape::MakeCapsule(CapsuleRadius, TargetHalfHeight),
-		QueryParams
-	);
-
-	// Debug visualization
-	const float LifeTime = 5.0f;            // how long the debug shapes persist (seconds)
-	const float Thickness = 2.0f;           // line/capsule thickness
-	const FColor StartColor = FColor::Blue; // current capsule
-	const FColor EndColor = bBlocked ? FColor::Red : FColor::Green; // result capsule color
-
-	// Draw current capsule at Start (uses current half-height)
-	DrawDebugCapsule(GetWorld(), Start, CurrentHalfHeight, CapsuleRadius, FQuat::Identity, StartColor, false, LifeTime, 0, Thickness);
-	// Draw target capsule at End (uses target half-height)
-	DrawDebugCapsule(GetWorld(), End, TargetHalfHeight, CapsuleRadius, FQuat::Identity, EndColor, false, LifeTime, 0, Thickness);
-	// Draw a line between capsule centers so you can see sweep direction/length
-	DrawDebugLine(GetWorld(), Start, End, EndColor, false, LifeTime, 0, Thickness);
-
-	UE_LOG(LogTemp, Display, TEXT("UnProne sweep: Start Z=%f  End Z=%f  Blocked=%s"), Start.Z, End.Z, bBlocked ? TEXT("true") : TEXT("false"));
+	UE_LOG(LogTemp, Display, TEXT("bBlocked %s"), bBlocked ? TEXT("true") : TEXT("false"));
 
 	if (!bBlocked)
 	{
 		bIsProne = false;
-		Capsule->SetCapsuleHalfHeight(CrouchedHeight);
+		RecalculateCapsuleHalfHeight(CrouchedHeight);
 		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
 	}
 }
 
-void AAdvMovSysCharacter::Slide()
+void AAdvMovSysCharacter::Slide(const FInputActionValue& Value)
 {
-	if(GetCharacterMovement()->IsMovingOnGround())
+	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed > NormalWalkSpeed && Value.Get<bool>())
+	{
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		if (Capsule)
+		{
+			float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+			float HeightDifference = CurrentHalfHeight - PronedHeight;
+
+			// Compensa la posizione verticale dell'attore per mantenerlo a terra
+			FVector NewLocation = GetActorLocation();
+			NewLocation.Z -= HeightDifference;
+			SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+			// Aggiusta anche la mesh
+			RecalculateCapsuleHalfHeight(PronedHeight);
+		}
 		bIsSliding = true;
+	}
 	else
+	{
+		UCapsuleComponent* Capsule = GetCapsuleComponent();
+		if (Capsule)
+		{
+			float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+			float HeightDifference = StandingHeight - CurrentHalfHeight;
+
+			FVector Start = GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
+			FVector End = Start + FVector(0.f, 0.f, StandingHeight);
+
+			//Debug Line
+			bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
+
+			if (!bBlocked)
+			{
+				// Compensa la posizione
+				FVector NewLocation = GetActorLocation();
+				NewLocation.Z += HeightDifference;
+				SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+				// Aggiusta la mesh
+				RecalculateCapsuleHalfHeight(StandingHeight);
+			}
+			else
+			{
+				Crouch();
+				Prone();
+			}
+		}
 		bIsSliding = false;
+	}
+
+	UE_LOG(LogTemp, Display, TEXT("bIsSliding: %s"), bIsSliding ? TEXT("true") : TEXT("false"));
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)

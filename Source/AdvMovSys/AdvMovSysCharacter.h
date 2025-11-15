@@ -61,6 +61,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* ProneAction;
 
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* SlideAction;
+
 public:
 
 	/** Constructor */
@@ -81,13 +84,16 @@ protected:
 	void DoProne(const FInputActionValue& Value);
 	void Prone();
 	void UnProne();
-	void Slide();
+	void Slide(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
+	void RecalculateCapsuleHalfHeight(float NewHalfHeight);
+
 private:
-	float CrouchedHeight = 96.0f;
+	float StandingHeight = 90.0f;
+	float CrouchedHeight = 45.0f;
 	float PronedHeight = 20.0f;
 	float NormalWalkSpeed = 500.0f;
 	float WalkWalkSpeed = 200.0f;
@@ -98,7 +104,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
 	bool bIsProne = false;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
+	UPROPERTY(BlueprintReadWrite, Category = "Character Movement")
 	bool bIsSliding = false;
 
 	/** Handles move inputs from either controls or UI interfaces */
