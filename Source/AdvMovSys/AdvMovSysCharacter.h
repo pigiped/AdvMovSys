@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
+#include "CharacterState.h"
 #include "AdvMovSysCharacter.generated.h"
 
 class USpringArmComponent;
@@ -64,6 +65,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SlideAction;
 
+	/** Current state (state pattern) */
+	CharacterState* CurrentState = nullptr;
+
 public:
 
 	/** Constructor */
@@ -92,9 +96,9 @@ protected:
 	void RecalculateCapsuleHalfHeight(float NewHalfHeight);
 
 private:
-	float StandingHeight = 90.0f;
-	float CrouchedHeight = 45.0f;
-	float PronedHeight = 20.0f;
+	float StandingHalfHeight = 90.0f;
+	float CrouchedHalfHeight = 45.0f;
+	float PronedHalfHeight = 20.0f;
 	float NormalWalkSpeed = 500.0f;
 	float WalkWalkSpeed = 200.0f;
 	float SprintWalkSpeed = 800.0f;
@@ -123,6 +127,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpEnd();
 
+	virtual void HandleInput(const FInputActionValue& Value);
+	void SetCharacterState(CharacterState* NewState);
+
 public:
 
 	/** Returns CameraBoom subobject **/
@@ -130,5 +137,27 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	/** Getters for capsule half-heights and movement speeds (Blueprint-accessible, read-only) */
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetStandingHalfHeight() const { return StandingHalfHeight; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetCrouchedHalfHeight() const { return CrouchedHalfHeight; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetPronedHalfHeight() const { return PronedHalfHeight; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetNormalWalkSpeed() const { return NormalWalkSpeed; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetWalkWalkSpeed() const { return WalkWalkSpeed; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetSprintWalkSpeed() const { return SprintWalkSpeed; }
+
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	FORCEINLINE float GetPronedWalkSpeed() const { return PronedWalkSpeed; }
 };
 

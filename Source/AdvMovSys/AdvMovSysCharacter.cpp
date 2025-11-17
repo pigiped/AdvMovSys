@@ -10,12 +10,15 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "CrouchingState.h"
+#include "WalkingState.h"
+#include "SprintingState.h"
 #include "AdvMovSys.h"
 
 AAdvMovSysCharacter::AAdvMovSysCharacter()
 {
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(20.f, StandingHeight);
+	GetCapsuleComponent()->InitCapsuleSize(20.f, StandingHalfHeight);
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -129,54 +132,30 @@ void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::Sprint(const FInputActionValue& Value)
 {
-	bool ShouldSprint = Value.Get<bool>();
-
-	if (ShouldSprint)
+	if (GetCharacterMovement()->IsMovingOnGround())
 	{
-		if (GetCharacterMovement()->IsMovingOnGround())
+		if (Value.Get<bool>())
 		{
-			GetCharacterMovement()->MaxWalkSpeed = SprintWalkSpeed;
+			SetCharacterState(&SprintingState::Get());
 		}
-	}
-	else
-	{
-		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
+		else
+		{
+			SetCharacterState(&WalkingState::Get());
+		}
 	}
 }
 
 void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 {
-	bool ShouldCrouchInput = Value.Get<bool>();
-
-	if (ShouldCrouchInput)
+	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
 	{
-		if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
-		{
-			if (!bIsCrouched)
-			{
-				Crouch();
-				GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Crouch"));
-			}
-			else
-			{
-				if (bIsProne)
-				{
-					GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Unproning for crouching"));
-					UnProne();
-					return;
-				}
-				UnCrouch();
-				GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnCrouch"));
-			}
-		}
+		SetCharacterState(&CrouchingState::Get());
 	}
-	UE_LOG(LogTemp, Display, TEXT("capsule height: %f"), GetCapsuleComponent()->GetUnscaledCapsuleHalfHeight());
-
 }
 
 void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 {
-	bool ShouldProneInput = Value.Get<bool>();
+	/*bool ShouldProneInput = Value.Get<bool>();
 
 	if (ShouldProneInput)
 	{
@@ -191,14 +170,13 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 				UnProne();
 			}
 		}
-	}
+	}*/
 }
 
 void AAdvMovSysCharacter::Prone()
 {
-	if (!bIsCrouched) return;
 	bIsProne = true;
-	RecalculateCapsuleHalfHeight(PronedHeight);
+	RecalculateCapsuleHalfHeight(PronedHalfHeight);
 	GetCharacterMovement()->MaxWalkSpeed = PronedWalkSpeed;
 
 	RecalculateBaseEyeHeight();
@@ -212,7 +190,7 @@ void AAdvMovSysCharacter::UnProne()
 	if (!Capsule) return;
 
 	FVector Start = GetActorLocation() - FVector(0,0,Capsule->GetScaledCapsuleRadius());
-	FVector End = Start + FVector(0.f, 0.f, CrouchedHeight);
+	FVector End = Start + FVector(0.f, 0.f, CrouchedHalfHeight);
 	
 	//Debug Line
 	bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
@@ -223,7 +201,7 @@ void AAdvMovSysCharacter::UnProne()
 	if (!bBlocked)
 	{
 		bIsProne = false;
-		RecalculateCapsuleHalfHeight(CrouchedHeight);
+		RecalculateCapsuleHalfHeight(CrouchedHalfHeight);
 		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
 		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
 	}
@@ -231,59 +209,75 @@ void AAdvMovSysCharacter::UnProne()
 
 void AAdvMovSysCharacter::Slide(const FInputActionValue& Value)
 {
-	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed > NormalWalkSpeed && Value.Get<bool>())
-	{
-		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		if (Capsule)
-		{
-			float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-			float HeightDifference = CurrentHalfHeight - PronedHeight;
+	//if (!GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
+	//	return;
 
-			// Compensa la posizione verticale dell'attore per mantenerlo a terra
-			FVector NewLocation = GetActorLocation();
-			NewLocation.Z -= HeightDifference;
-			SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	//UCapsuleComponent* Capsule = GetCapsuleComponent();
+	//if (!Capsule) 
+	//	return;
 
-			// Aggiusta anche la mesh
-			RecalculateCapsuleHalfHeight(PronedHeight);
-		}
-		bIsSliding = true;
-	}
-	else
-	{
-		UCapsuleComponent* Capsule = GetCapsuleComponent();
-		if (Capsule)
-		{
-			float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-			float HeightDifference = StandingHeight - CurrentHalfHeight;
+	//if (Value.Get<bool>())
+	//{
+	//	float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	//	float HeightDifference = CurrentHalfHeight - PronedHalfHeight;
 
-			FVector Start = GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
-			FVector End = Start + FVector(0.f, 0.f, StandingHeight);
+	//	// Compensa la posizione verticale dell'attore per mantenerlo a terra
+	//	FVector NewLocation = GetActorLocation();
+	//	NewLocation.Z -= HeightDifference;
+	//	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
-			//Debug Line
-			bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-			DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
+	//	// Aggiusta anche la mesh
+	//	RecalculateCapsuleHalfHeight(PronedHalfHeight);
 
-			if (!bBlocked)
-			{
-				// Compensa la posizione
-				FVector NewLocation = GetActorLocation();
-				NewLocation.Z += HeightDifference;
-				SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	//	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Slide"));
+	//	bIsSliding = true;
+	//}
+	//else
+	//{
+	//	float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	//	float HeightDifference = StandingHalfHeight - CurrentHalfHeight;
 
-				// Aggiusta la mesh
-				RecalculateCapsuleHalfHeight(StandingHeight);
-			}
-			else
-			{
-				Crouch();
-				Prone();
-			}
-		}
-		bIsSliding = false;
-	}
+	//	FVector Start = GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
+	//	FVector End = Start + FVector(0.f, 0.f, StandingHalfHeight * 2);
 
-	UE_LOG(LogTemp, Display, TEXT("bIsSliding: %s"), bIsSliding ? TEXT("true") : TEXT("false"));
+	//	//Debug Line
+	//	bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	//	DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
+
+	//	if (!bBlocked)
+	//	{
+	//		// Compensa la posizione
+	//		FVector NewLocation = GetActorLocation();
+	//		NewLocation.Z += HeightDifference;
+	//		SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+	//		// Aggiusta la mesh
+	//		RecalculateCapsuleHalfHeight(StandingHalfHeight);
+	//	}
+	//	else
+	//	{
+	//		End = Start + FVector(0.f, 0.f, CrouchedHalfHeight * 2);
+	//		bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	//		DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
+	//		if (!bBlocked)
+	//		{
+	//			// Compensa la posizione
+	//			//FVector NewLocation = GetActorLocation();
+	//			//NewLocation.Z += (CrouchedHalfHeight - CurrentHalfHeight);
+	//			//SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	//			//// Aggiusta la mesh
+	//			//RecalculateCapsuleHalfHeight(CrouchedHalfHeight);
+	//			Crouch();
+	//		}
+	//		else
+	//		{
+	//			UE_LOG(LogTemp, Display, TEXT("prona cojone"));
+	//			Prone();
+	//		}
+	//	}
+	//	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnSlide"));
+	//	bIsSliding = false;
+	//}
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)
@@ -326,4 +320,23 @@ void AAdvMovSysCharacter::DoJumpEnd()
 {
 	// signal the character to stop jumping
 	StopJumping();
+}
+
+void AAdvMovSysCharacter::HandleInput(const FInputActionValue& Value)
+{
+	if (CurrentState)
+		CurrentState->HandleInput(this, Value);
+}
+
+void AAdvMovSysCharacter::SetCharacterState(CharacterState* NewState)
+{
+	if (CurrentState)
+		CurrentState->ExitState(this);
+
+	CurrentState = NewState;
+	
+	if (CurrentState)
+		CurrentState->EnterState(this);
+
+	HandleInput(FInputActionValue());
 }
