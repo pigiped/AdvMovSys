@@ -86,23 +86,16 @@ protected:
 	void Sprint(const FInputActionValue& Value);
 	void DoCrouch(const FInputActionValue& Value);
 	void DoProne(const FInputActionValue& Value);
-	void Prone();
-	void UnProne();
 	void Slide(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-	void RecalculateCapsuleHalfHeight(float NewHalfHeight);
-
 private:
 	float StandingHalfHeight = 90.0f;
-	float CrouchedHalfHeight = 45.0f;
-	float PronedHalfHeight = 20.0f;
 	float NormalWalkSpeed = 500.0f;
 	float WalkWalkSpeed = 200.0f;
 	float SprintWalkSpeed = 800.0f;
-	float PronedWalkSpeed = 100.0f;
 
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
@@ -143,12 +136,6 @@ public:
 	FORCEINLINE float GetStandingHalfHeight() const { return StandingHalfHeight; }
 
 	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetCrouchedHalfHeight() const { return CrouchedHalfHeight; }
-
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetPronedHalfHeight() const { return PronedHalfHeight; }
-
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
 	FORCEINLINE float GetNormalWalkSpeed() const { return NormalWalkSpeed; }
 
 	UFUNCTION(BlueprintPure, Category = "Character Movement")
@@ -157,7 +144,8 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Character Movement")
 	FORCEINLINE float GetSprintWalkSpeed() const { return SprintWalkSpeed; }
 
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetPronedWalkSpeed() const { return PronedWalkSpeed; }
+	void SetWalkSpeed(float NewWalkSpeed);
+	void RecalculateCapsuleHalfHeight(float NewHalfHeight);
+
 };
 

@@ -13,11 +13,17 @@ WalkingState::~WalkingState()
 {
 }
 
+WalkingState& WalkingState::Get()
+{
+	static WalkingState Instance;
+	return Instance;
+}
+
 void WalkingState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (Character)
 	{
-		Character->GetCharacterMovement()->MaxWalkSpeed = Character->GetNormalWalkSpeed();
+		Character->GetCharacterMovement()->MaxWalkSpeed = Character->GetWalkWalkSpeed();
 	}
 }
 

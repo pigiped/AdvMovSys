@@ -100,18 +100,7 @@ void AAdvMovSysCharacter::Look(const FInputActionValue& Value)
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
 
-void AAdvMovSysCharacter::RecalculateCapsuleHalfHeight(float NewHalfHeight)
-{
-	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	if (!Capsule) return;
-	float PresentHeight = Capsule->GetScaledCapsuleHalfHeight();
-	float OldZ = GetMesh()->GetRelativeLocation().Z;
-	Capsule->SetCapsuleHalfHeight(NewHalfHeight);
-	FVector NewLocation = GetMesh()->GetRelativeLocation();
-	NewLocation.Z += (PresentHeight-NewHalfHeight);
-	GetMesh()->SetRelativeLocation(NewLocation);
-	UE_LOG(LogTemp, Display, TEXT("Passing from %f to %f, newLocation is %f, before it was: %f"), PresentHeight, NewHalfHeight, NewLocation.Z, OldZ);
-}
+
 
 void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
 {
@@ -155,55 +144,9 @@ void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 {
-	/*bool ShouldProneInput = Value.Get<bool>();
-
-	if (ShouldProneInput)
+	if (GetCharacterMovement()->IsMovingOnGround())
 	{
-		if (GetCharacterMovement()->IsMovingOnGround())
-		{
-			if (!bIsProne)
-			{
-				Prone();
-			}
-			else
-			{
-				UnProne();
-			}
-		}
-	}*/
-}
-
-void AAdvMovSysCharacter::Prone()
-{
-	bIsProne = true;
-	RecalculateCapsuleHalfHeight(PronedHalfHeight);
-	GetCharacterMovement()->MaxWalkSpeed = PronedWalkSpeed;
-
-	RecalculateBaseEyeHeight();
-
-	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Prone"));
-}
-
-void AAdvMovSysCharacter::UnProne()
-{
-	UCapsuleComponent* Capsule = GetCapsuleComponent();
-	if (!Capsule) return;
-
-	FVector Start = GetActorLocation() - FVector(0,0,Capsule->GetScaledCapsuleRadius());
-	FVector End = Start + FVector(0.f, 0.f, CrouchedHalfHeight);
-	
-	//Debug Line
-	bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-	DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
-
-	UE_LOG(LogTemp, Display, TEXT("bBlocked %s"), bBlocked ? TEXT("true") : TEXT("false"));
-
-	if (!bBlocked)
-	{
-		bIsProne = false;
-		RecalculateCapsuleHalfHeight(CrouchedHalfHeight);
-		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
+		SetCharacterState(&CrouchingState::Get());
 	}
 }
 
@@ -339,4 +282,22 @@ void AAdvMovSysCharacter::SetCharacterState(CharacterState* NewState)
 		CurrentState->EnterState(this);
 
 	HandleInput(FInputActionValue());
+}
+
+void AAdvMovSysCharacter::SetWalkSpeed(float NewWalkSpeed)
+{
+	GetCharacterMovement()->MaxWalkSpeed = NewWalkSpeed;
+}
+
+void AAdvMovSysCharacter::RecalculateCapsuleHalfHeight(float NewHalfHeight)
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!Capsule) return;
+	float PresentHeight = Capsule->GetScaledCapsuleHalfHeight();
+	float OldZ = GetMesh()->GetRelativeLocation().Z;
+	Capsule->SetCapsuleHalfHeight(NewHalfHeight);
+	FVector NewLocation = GetMesh()->GetRelativeLocation();
+	NewLocation.Z += (PresentHeight - NewHalfHeight);
+	GetMesh()->SetRelativeLocation(NewLocation);
+	UE_LOG(LogTemp, Display, TEXT("Passing from %f to %f, newLocation is %f, before it was: %f"), PresentHeight, NewHalfHeight, NewLocation.Z, OldZ);
 }

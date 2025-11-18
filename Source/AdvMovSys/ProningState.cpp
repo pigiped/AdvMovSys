@@ -2,6 +2,12 @@
 
 
 #include "ProningState.h"
+#include "InputActionValue.h"
+#include "AdvMovSysCharacter.h"
+#include "Components/CapsuleComponent.h"
+#include "Engine/World.h" 
+#include "CrouchingState.h"
+
 
 ProningState::ProningState()
 {
@@ -9,4 +15,56 @@ ProningState::ProningState()
 
 ProningState::~ProningState()
 {
+}
+
+ProningState& ProningState::Get()
+{
+	static ProningState Instance;
+	return Instance;
+}
+
+void ProningState::HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value)
+{
+	// Do not dereference Character here; input handling may be informative only.
+}
+
+void ProningState::EnterState(AAdvMovSysCharacter* Character)
+{
+	Prone(Character);
+}
+
+void ProningState::ExitState(AAdvMovSysCharacter* Character)
+{
+	UnProne(Character);
+}
+
+void ProningState::Prone(AAdvMovSysCharacter* Character)
+{
+	Character->RecalculateCapsuleHalfHeight(PronedHalfHeight);
+	Character->SetWalkSpeed(PronedWalkSpeed);
+	Character->RecalculateBaseEyeHeight();
+
+	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Prone"));
+}
+
+void ProningState::UnProne(AAdvMovSysCharacter* Character)
+{
+	UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
+	if (!Capsule) return;
+
+	FVector Start = Character->GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
+	FVector End = Start + FVector(0.f, 0.f, CrouchingState::Get().GetCrouchedHalfHeight());
+
+	//Debug Line
+	bool bBlocked = GEngine->GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	DrawDebugLine(GEngine->GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
+
+	UE_LOG(LogTemp, Display, TEXT("bBlocked %s"), bBlocked ? TEXT("true") : TEXT("false"));
+
+	if (!bBlocked)
+	{
+		Character->RecalculateCapsuleHalfHeight(CrouchingState::Get().GetCrouchedHalfHeight());
+		Character->SetWalkSpeed(Character->GetNormalWalkSpeed());
+		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnProne"));
+	}
 }

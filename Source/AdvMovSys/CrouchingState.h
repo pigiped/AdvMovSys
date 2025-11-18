@@ -23,4 +23,9 @@ public:
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value) override;
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
+	float GetCrouchedHalfHeight() const;
+
+private:
+	float CrouchedHalfHeight = 45.0f;
+
 };

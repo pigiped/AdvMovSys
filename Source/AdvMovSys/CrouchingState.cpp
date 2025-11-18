@@ -51,3 +51,8 @@ void CrouchingState::ExitState(AAdvMovSysCharacter* Character)
 		Character->UnCrouch();
 	}
 }
+
+float CrouchingState::GetCrouchedHalfHeight() const
+{
+	return CrouchedHalfHeight;
+}

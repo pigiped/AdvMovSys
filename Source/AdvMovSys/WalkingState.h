@@ -16,6 +16,7 @@ class ADVMOVSYS_API WalkingState : public CharacterState
 public:
 	WalkingState();
 	~WalkingState();
+	static WalkingState& Get();
 
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;

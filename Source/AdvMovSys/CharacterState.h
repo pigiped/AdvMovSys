@@ -8,7 +8,7 @@ struct FInputActionValue;
 class AAdvMovSysCharacter;
 
 /**
- * Base class for character input states.
+ * Base class for character input states. Derive from this class to implement specific states.
  */
 class ADVMOVSYS_API CharacterState
 {
