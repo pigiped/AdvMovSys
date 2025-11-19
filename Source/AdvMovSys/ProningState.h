@@ -23,10 +23,14 @@ public:
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value) override;
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
+	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::Proning; }
+
+	float GetProningHalfHeight() const { return PronedHalfHeight; }
+	CharacterState* GetTargetStateFromProne(AAdvMovSysCharacter* Character);
 
 private:
 	void Prone(AAdvMovSysCharacter* Character);
-	void UnProne(AAdvMovSysCharacter* Character);
+	
 	float PronedHalfHeight = 20.0f;
 	float PronedWalkSpeed = 100.0f;
 

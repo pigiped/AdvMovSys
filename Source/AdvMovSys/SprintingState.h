@@ -23,4 +23,10 @@ public:
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value) override;
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
+	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::Sprinting; }
+
+	float GetSprintWalkSpeed() const { return SprintWalkSpeed; }
+
+private:
+	const float SprintWalkSpeed = 800.0f;
 };

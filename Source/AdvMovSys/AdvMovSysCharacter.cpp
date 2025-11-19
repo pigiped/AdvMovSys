@@ -13,12 +13,15 @@
 #include "CrouchingState.h"
 #include "WalkingState.h"
 #include "SprintingState.h"
+#include "ProningState.h"
+#include "DefaultState.h"
+#include "SlidingState.h"
 #include "AdvMovSys.h"
 
 AAdvMovSysCharacter::AAdvMovSysCharacter()
 {
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(20.f, StandingHalfHeight);
+	GetCapsuleComponent()->InitCapsuleSize(20.f, DefaultState::Get().GetDefaultHalfHeight());
 
 	// Don't rotate when the controller rotates. Let that just affect the camera.
 	bUseControllerRotationPitch = false;
@@ -33,7 +36,7 @@ AAdvMovSysCharacter::AAdvMovSysCharacter()
 	// instead of recompiling to adjust them
 	GetCharacterMovement()->JumpZVelocity = 500.f;
 	GetCharacterMovement()->AirControl = 0.35f;
-	GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
+	GetCharacterMovement()->MaxWalkSpeed = DefaultState::Get().GetDefaultWalkSpeed();
 	GetCharacterMovement()->MinAnalogWalkSpeed = 20.f;
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f;
 	GetCharacterMovement()->BrakingDecelerationFalling = 1500.0f;
@@ -67,9 +70,9 @@ void AAdvMovSysCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Look);
 		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Walk);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Sprint);
-		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoCrouch);
-		EnhancedInputComponent->BindAction(ProneAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoProne);
-		EnhancedInputComponent->BindAction(SlideAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Slide);
+		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AAdvMovSysCharacter::DoCrouch);
+		EnhancedInputComponent->BindAction(ProneAction, ETriggerEvent::Started, this, &AAdvMovSysCharacter::DoProne);
+		EnhancedInputComponent->BindAction(SlideAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoSlide);
 
 
 		// Looking
@@ -104,18 +107,16 @@ void AAdvMovSysCharacter::Look(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
 {
-	bool ShouldWalk = Value.Get<bool>();
-
-	if (ShouldWalk)
+	if (GetCharacterMovement()->IsMovingOnGround())
 	{
-		if (GetCharacterMovement()->IsMovingOnGround())
+		if (Value.Get<bool>())
 		{
-			GetCharacterMovement()->MaxWalkSpeed = WalkWalkSpeed;
+			SetCharacterState(&WalkingState::Get());
 		}
-	}
-	else
-	{
-		GetCharacterMovement()->MaxWalkSpeed = NormalWalkSpeed;
+		else
+		{
+			SetCharacterState(&DefaultState::Get());
+		}
 	}
 }
 
@@ -129,14 +130,14 @@ void AAdvMovSysCharacter::Sprint(const FInputActionValue& Value)
 		}
 		else
 		{
-			SetCharacterState(&WalkingState::Get());
+			SetCharacterState(&DefaultState::Get());
 		}
 	}
 }
 
 void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 {
-	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
+	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintingState::Get().GetSprintWalkSpeed())
 	{
 		SetCharacterState(&CrouchingState::Get());
 	}
@@ -146,81 +147,37 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 {
 	if (GetCharacterMovement()->IsMovingOnGround())
 	{
-		SetCharacterState(&CrouchingState::Get());
+		if (CurrentState == &ProningState::Get())
+		{
+			// We're already prone, try to get up
+			CharacterState* TargetState = ProningState::Get().GetTargetStateFromProne(this);
+
+			// Only change state if we can actually get up
+			if (TargetState != &ProningState::Get())
+			{
+				SetCharacterState(TargetState);
+				UE_LOG(LogTemp, Display, TEXT("current state: %s"), *UEnum::GetValueAsString(CurrentMovementState));
+			}
+			else if (GEngine)
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Not enough space to get up!"));
+			}
+		}
+		else
+		{
+			// Go prone
+			SetCharacterState(&ProningState::Get());
+		}
 	}
 }
 
-void AAdvMovSysCharacter::Slide(const FInputActionValue& Value)
+void AAdvMovSysCharacter::DoSlide(const FInputActionValue& Value)
 {
-	//if (!GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->MaxWalkSpeed < SprintWalkSpeed)
-	//	return;
-
-	//UCapsuleComponent* Capsule = GetCapsuleComponent();
-	//if (!Capsule) 
-	//	return;
-
-	//if (Value.Get<bool>())
-	//{
-	//	float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-	//	float HeightDifference = CurrentHalfHeight - PronedHalfHeight;
-
-	//	// Compensa la posizione verticale dell'attore per mantenerlo a terra
-	//	FVector NewLocation = GetActorLocation();
-	//	NewLocation.Z -= HeightDifference;
-	//	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-
-	//	// Aggiusta anche la mesh
-	//	RecalculateCapsuleHalfHeight(PronedHalfHeight);
-
-	//	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Slide"));
-	//	bIsSliding = true;
-	//}
-	//else
-	//{
-	//	float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
-	//	float HeightDifference = StandingHalfHeight - CurrentHalfHeight;
-
-	//	FVector Start = GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
-	//	FVector End = Start + FVector(0.f, 0.f, StandingHalfHeight * 2);
-
-	//	//Debug Line
-	//	bool bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-	//	DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
-
-	//	if (!bBlocked)
-	//	{
-	//		// Compensa la posizione
-	//		FVector NewLocation = GetActorLocation();
-	//		NewLocation.Z += HeightDifference;
-	//		SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-
-	//		// Aggiusta la mesh
-	//		RecalculateCapsuleHalfHeight(StandingHalfHeight);
-	//	}
-	//	else
-	//	{
-	//		End = Start + FVector(0.f, 0.f, CrouchedHalfHeight * 2);
-	//		bBlocked = GetWorld()->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-	//		DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 5.0f, 0, 5.0f);
-	//		if (!bBlocked)
-	//		{
-	//			// Compensa la posizione
-	//			//FVector NewLocation = GetActorLocation();
-	//			//NewLocation.Z += (CrouchedHalfHeight - CurrentHalfHeight);
-	//			//SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-	//			//// Aggiusta la mesh
-	//			//RecalculateCapsuleHalfHeight(CrouchedHalfHeight);
-	//			Crouch();
-	//		}
-	//		else
-	//		{
-	//			UE_LOG(LogTemp, Display, TEXT("prona cojone"));
-	//			Prone();
-	//		}
-	//	}
-	//	GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnSlide"));
-	//	bIsSliding = false;
-	//}
+	if (GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->MaxWalkSpeed < SprintingState::Get().GetSprintWalkSpeed())
+	{
+		SetCharacterState(&SlidingState::Get(), Value);
+	}
+		
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)
@@ -265,23 +222,41 @@ void AAdvMovSysCharacter::DoJumpEnd()
 	StopJumping();
 }
 
-void AAdvMovSysCharacter::HandleInput(const FInputActionValue& Value)
-{
-	if (CurrentState)
-		CurrentState->HandleInput(this, Value);
-}
-
 void AAdvMovSysCharacter::SetCharacterState(CharacterState* NewState)
 {
 	if (CurrentState)
 		CurrentState->ExitState(this);
 
+	// Cache previous state
+	PreviousState = CurrentState;
+	PreviousMovementState = CurrentMovementState;
+
+	// Set new state
 	CurrentState = NewState;
+	CurrentMovementState = CurrentState->GetStateType();
 	
 	if (CurrentState)
 		CurrentState->EnterState(this);
+}
 
-	HandleInput(FInputActionValue());
+void AAdvMovSysCharacter::SetCharacterState(CharacterState* NewState,const FInputActionValue& Value)
+{
+	if (CurrentState)
+		CurrentState->ExitState(this);
+	
+	// Cache previous state
+	PreviousState = CurrentState;
+	PreviousMovementState = CurrentMovementState;
+
+	// Set new state
+	CurrentState = NewState;
+	CurrentMovementState = CurrentState->GetStateType();
+
+	if (CurrentState)
+	{
+		CurrentState->EnterState(this);
+		CurrentState->HandleInput(this, Value);
+	}
 }
 
 void AAdvMovSysCharacter::SetWalkSpeed(float NewWalkSpeed)

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "CharacterStateTypes.h"
 
 struct FInputActionValue;
 class AAdvMovSysCharacter;
@@ -20,4 +21,7 @@ public:
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value);
 	virtual void EnterState(AAdvMovSysCharacter* Character) {};
 	virtual void ExitState(AAdvMovSysCharacter* Character) {};
+
+	// Override this in each derived state to return its type
+	virtual ECharacterMovementState GetStateType() const { return ECharacterMovementState::Default; }
 };

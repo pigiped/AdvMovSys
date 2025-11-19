@@ -5,12 +5,13 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Logging/LogMacros.h"
-#include "CharacterState.h"
+#include "CharacterStateTypes.h"
 #include "AdvMovSysCharacter.generated.h"
 
 class USpringArmComponent;
 class UCameraComponent;
 class UInputAction;
+class CharacterState;
 struct FInputActionValue;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
@@ -67,6 +68,14 @@ protected:
 
 	/** Current state (state pattern) */
 	CharacterState* CurrentState = nullptr;
+	CharacterState* PreviousState = nullptr;
+
+	/** Cached current state type for Blueprint access */
+	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
+	ECharacterMovementState CurrentMovementState;
+	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
+	ECharacterMovementState PreviousMovementState;
+
 
 public:
 
@@ -86,23 +95,12 @@ protected:
 	void Sprint(const FInputActionValue& Value);
 	void DoCrouch(const FInputActionValue& Value);
 	void DoProne(const FInputActionValue& Value);
-	void Slide(const FInputActionValue& Value);
+	void DoSlide(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
 
-private:
-	float StandingHalfHeight = 90.0f;
-	float NormalWalkSpeed = 500.0f;
-	float WalkWalkSpeed = 200.0f;
-	float SprintWalkSpeed = 800.0f;
-
 public:
-	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
-	bool bIsProne = false;
-
-	UPROPERTY(BlueprintReadWrite, Category = "Character Movement")
-	bool bIsSliding = false;
 
 	/** Handles move inputs from either controls or UI interfaces */
 	UFUNCTION(BlueprintCallable, Category = "Input")
@@ -120,8 +118,19 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Input")
 	virtual void DoJumpEnd();
 
-	virtual void HandleInput(const FInputActionValue& Value);
+	/** Gets the current movement state type (accessible from Animation Blueprint) */
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	ECharacterMovementState GetCurrentMovementState() const { return CurrentMovementState; }
+	UFUNCTION(BlueprintPure, Category = "Character Movement")
+	ECharacterMovementState GetPreviousMovementState() const { return PreviousMovementState; }
+
+	// Internal C++ methods - not exposed to Blueprints
+	CharacterState* GetCurrentState() const { return CurrentState; }
+	CharacterState* GetPreviousState() const { return PreviousState; }
+
 	void SetCharacterState(CharacterState* NewState);
+	void SetCharacterState(CharacterState* NewState, const FInputActionValue& Value);
+
 
 public:
 
@@ -130,19 +139,6 @@ public:
 
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
-
-	/** Getters for capsule half-heights and movement speeds (Blueprint-accessible, read-only) */
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetStandingHalfHeight() const { return StandingHalfHeight; }
-
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetNormalWalkSpeed() const { return NormalWalkSpeed; }
-
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetWalkWalkSpeed() const { return WalkWalkSpeed; }
-
-	UFUNCTION(BlueprintPure, Category = "Character Movement")
-	FORCEINLINE float GetSprintWalkSpeed() const { return SprintWalkSpeed; }
 
 	void SetWalkSpeed(float NewWalkSpeed);
 	void RecalculateCapsuleHalfHeight(float NewHalfHeight);

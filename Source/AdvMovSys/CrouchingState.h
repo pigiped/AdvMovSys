@@ -23,6 +23,8 @@ public:
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value) override;
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
+	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::Crouching; }
+	
 	float GetCrouchedHalfHeight() const;
 
 private:

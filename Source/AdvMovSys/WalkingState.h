@@ -21,4 +21,8 @@ public:
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
 	virtual void HandleInput(AAdvMovSysCharacter* Character, const FInputActionValue& Value) override;
+	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::Walking; }
+
+private:
+	float WalkWalkSpeed = 200.0f;
 };
