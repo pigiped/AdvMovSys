@@ -23,7 +23,7 @@ void DefaultState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Default (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Default (state handler)"));
 	}
 	// Handle input specific to the default state here
 }
@@ -32,7 +32,7 @@ void DefaultState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Default"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Default"));
 	}
 	// Set character properties for default state
 	Character->SetWalkSpeed(DefaultWalkSpeed);
@@ -44,7 +44,7 @@ void DefaultState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Default"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Default"));
 	}
 	// Cleanup or reset properties when exiting default state if necessary
 }

@@ -24,7 +24,7 @@ void WalkingState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Walk"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Walk"));
 	}
 	if (Character)
 	{
@@ -36,7 +36,7 @@ void WalkingState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Walk"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Walk"));
 	}
 	if (Character)
 	{
@@ -48,7 +48,7 @@ void WalkingState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Walking (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Walking (state handler)"));
 	}
 	// Handle input for walking state
 }

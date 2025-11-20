@@ -29,5 +29,6 @@ public:
 
 private:
 	float CrouchedHalfHeight = 45.0f;
+	float CrouchedWalkSpeed = 300.0f;
 
 };

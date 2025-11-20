@@ -131,6 +131,13 @@ public:
 	void SetCharacterState(CharacterState* NewState);
 	void SetCharacterState(CharacterState* NewState, const FInputActionValue& Value);
 
+	UFUNCTION(BlueprintCallable, Category = "Character Movement")
+	void SetMovementState(ECharacterMovementState NewState);
+
+	CharacterState* GetTargetState() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Character Movement")
+	ECharacterMovementState GetTargetMovementState() const;
 
 public:
 

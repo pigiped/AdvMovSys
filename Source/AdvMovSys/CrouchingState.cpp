@@ -23,7 +23,7 @@ void CrouchingState::HandleInput(AAdvMovSysCharacter* Character, const FInputAct
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Crouch (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Crouch (state handler)"));
 	}
 	// Do not dereference Character here; input handling may be informative only.
 }
@@ -32,23 +32,22 @@ void CrouchingState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Crouch"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Crouch"));
 	}
+
 	if (Character)
-	{
-		Character->Crouch();
-	}
+		if (!Character) return;
+
+	Character->RecalculateCapsuleHalfHeight(CrouchedHalfHeight);
+	Character->SetWalkSpeed(CrouchedWalkSpeed);
+	Character->RecalculateBaseEyeHeight();
 }
 
 void CrouchingState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Crouch"));
-	}
-	if (Character)
-	{
-		Character->UnCrouch();
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Crouch"));
 	}
 }
 

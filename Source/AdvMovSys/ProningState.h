@@ -26,7 +26,6 @@ public:
 	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::Proning; }
 
 	float GetProningHalfHeight() const { return PronedHalfHeight; }
-	CharacterState* GetTargetStateFromProne(AAdvMovSysCharacter* Character);
 
 private:
 	void Prone(AAdvMovSysCharacter* Character);

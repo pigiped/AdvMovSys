@@ -29,7 +29,7 @@ void ProningState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Proning (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Proning (state handler)"));
 	}
 	// Do not dereference Character here; input handling may be informative only.
 }
@@ -38,7 +38,7 @@ void ProningState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Prone"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Prone"));
 	}
 	Prone(Character);
 }
@@ -47,7 +47,7 @@ void ProningState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Prone"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Prone"));
 	}
 }
 
@@ -61,7 +61,7 @@ void ProningState::Prone(AAdvMovSysCharacter* Character)
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Prone"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Prone"));
 	}
 }
 
@@ -96,43 +96,3 @@ void ProningState::Prone(AAdvMovSysCharacter* Character)
 //	return &ProningState::Get();
 //}
 
-CharacterState* ProningState::GetTargetStateFromProne(AAdvMovSysCharacter* Character)
-{
-	if (!Character) return &DefaultState::Get();
-	
-	UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
-	if (!Capsule) return &DefaultState::Get();
-
-	UWorld* World = Character->GetWorld();
-	if (!World) return &DefaultState::Get();
-
-	FVector Start = Character->GetActorLocation() - FVector(0, 0, Capsule->GetScaledCapsuleRadius());
-	
-	// First, try to stand up fully
-	FVector End = Start + FVector(0.f, 0.f, DefaultState::Get().GetDefaultHalfHeight() * 2);
-	bool bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
-
-	if (!bBlocked)
-	{
-		// Can stand up fully
-		UE_LOG(LogTemp, Display, TEXT("Can stand up from prone"));
-		return &DefaultState::Get();
-	}
-
-	// Can't stand, try crouching
-	End = Start + FVector(0.f, 0.f, CrouchingState::Get().GetCrouchedHalfHeight() * 2);
-	bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
-	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Yellow, false, 2.0f, 0, 2.0f);
-
-	if (!bBlocked)
-	{
-		// Can crouch
-		UE_LOG(LogTemp, Display, TEXT("Can crouch from prone"));
-		return &CrouchingState::Get();
-	}
-
-	// Can't crouch either, stay prone
-	UE_LOG(LogTemp, Display, TEXT("Must stay prone - no space"));
-	return &ProningState::Get();
-}

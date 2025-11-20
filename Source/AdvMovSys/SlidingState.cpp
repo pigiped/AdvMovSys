@@ -30,7 +30,7 @@ void SlidingState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Sliding (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Sliding (state handler)"));
 	}
 	if (Value.Get<bool>())
 	{
@@ -46,7 +46,7 @@ void SlidingState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Slide"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Slide"));
 	}
 }
 
@@ -54,7 +54,7 @@ void SlidingState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Slide"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Slide"));
 	}
 }
 
@@ -78,7 +78,7 @@ void SlidingState::Slide(AAdvMovSysCharacter* Character)
 
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Slide"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Slide"));
 	}
 }
 
@@ -135,6 +135,6 @@ void SlidingState::UnSlide(AAdvMovSysCharacter* Character)
 	
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("UnSlide"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("UnSlide"));
 	}
 }

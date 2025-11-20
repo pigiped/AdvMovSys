@@ -139,7 +139,17 @@ void AAdvMovSysCharacter::DoCrouch(const FInputActionValue& Value)
 {
 	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed < SprintingState::Get().GetSprintWalkSpeed())
 	{
-		SetCharacterState(&CrouchingState::Get());
+		if (CurrentState == &CrouchingState::Get() || CurrentState == &ProningState::Get())
+		{
+			// We're already crouching or proning, try to get up
+			CharacterState* TargetState = GetTargetState();
+
+			SetCharacterState(TargetState);
+		}
+		else
+		{
+			SetCharacterState(&CrouchingState::Get());
+		}
 	}
 }
 
@@ -150,7 +160,7 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 		if (CurrentState == &ProningState::Get())
 		{
 			// We're already prone, try to get up
-			CharacterState* TargetState = ProningState::Get().GetTargetStateFromProne(this);
+			CharacterState* TargetState = GetTargetState();
 
 			// Only change state if we can actually get up
 			if (TargetState != &ProningState::Get())
@@ -160,7 +170,7 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 			}
 			else if (GEngine)
 			{
-				GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Not enough space to get up!"));
+				GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Not enough space to get up!"));
 			}
 		}
 		else
@@ -173,11 +183,18 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::DoSlide(const FInputActionValue& Value)
 {
-	if (GetCharacterMovement()->IsMovingOnGround() || GetCharacterMovement()->MaxWalkSpeed < SprintingState::Get().GetSprintWalkSpeed())
+	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed >= SprintingState::Get().GetSprintWalkSpeed())
 	{
-		SetCharacterState(&SlidingState::Get(), Value);
+		if(Value.Get<bool>() == false)
+		{
+			SetCharacterState(GetTargetState());
+		}
+		else
+		{
+			SetCharacterState(&SlidingState::Get(), Value);
+		}
 	}
-		
+	
 }
 
 void AAdvMovSysCharacter::DoMove(float Right, float Forward)
@@ -257,6 +274,80 @@ void AAdvMovSysCharacter::SetCharacterState(CharacterState* NewState,const FInpu
 		CurrentState->EnterState(this);
 		CurrentState->HandleInput(this, Value);
 	}
+}
+
+// sets state for blueprint use
+void AAdvMovSysCharacter::SetMovementState(ECharacterMovementState NewState)
+{
+	switch (NewState)
+	{
+	case ECharacterMovementState::Default:
+		SetCharacterState(&DefaultState::Get());
+		break;
+	case ECharacterMovementState::Walking:
+		SetCharacterState(&WalkingState::Get());
+		break;
+	case ECharacterMovementState::Sprinting:
+		SetCharacterState(&SprintingState::Get());
+		break;
+	case ECharacterMovementState::Crouching:
+		SetCharacterState(&CrouchingState::Get());
+		break;
+	case ECharacterMovementState::Proning:
+		SetCharacterState(&ProningState::Get());
+		break;
+	case ECharacterMovementState::Sliding:
+		SetCharacterState(&SlidingState::Get());
+		break;
+	default:
+		UE_LOG(LogAdvMovSys, Warning, TEXT("AAdvMovSysCharacter::SetMovementState: Unknown state type!"));
+		break;
+	}
+}
+
+// Determine if we can stand up and how much, SHOULD SWEEP INSTEAD OF LINETRACE
+CharacterState* AAdvMovSysCharacter::GetTargetState() const
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!Capsule) return &DefaultState::Get();
+
+	UWorld* World = GetWorld();
+	if (!World) return &DefaultState::Get();
+
+	FVector Start = GetActorLocation() - FVector(0, 0,Capsule->GetScaledCapsuleHalfHeight());
+
+	// First, try to stand up fully
+	FVector End = Start + FVector(0.f, 0.f, DefaultState::Get().GetDefaultHalfHeight() * 2);
+	bool bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
+
+	if (!bBlocked)
+	{
+		// Can stand up fully
+		UE_LOG(LogTemp, Display, TEXT("Can stand up from prone"));
+		return &DefaultState::Get();
+	}
+
+	// Can't stand, try crouching
+	End = Start + FVector(0.f, 0.f, CrouchingState::Get().GetCrouchedHalfHeight() * 2);
+	bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
+	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Yellow, false, 2.0f, 0, 2.0f);
+
+	if (!bBlocked)
+	{
+		// Can crouch
+		UE_LOG(LogTemp, Display, TEXT("Can crouch from prone"));
+		return &CrouchingState::Get();
+	}
+
+	// Can't crouch either, stay prone
+	UE_LOG(LogTemp, Display, TEXT("Must stay prone - no space"));
+	return &ProningState::Get();
+}
+
+ECharacterMovementState AAdvMovSysCharacter::GetTargetMovementState() const
+{
+	return GetTargetState()->GetStateType();
 }
 
 void AAdvMovSysCharacter::SetWalkSpeed(float NewWalkSpeed)

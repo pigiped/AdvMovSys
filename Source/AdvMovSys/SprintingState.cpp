@@ -25,7 +25,7 @@ void SprintingState::HandleInput(AAdvMovSysCharacter* Character, const FInputAct
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Yellow, TEXT("Sprinting (state handler)"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Sprinting (state handler)"));
 	}
 	// Do not dereference Character here; input handling may be informative only.
 }
@@ -34,7 +34,7 @@ void SprintingState::EnterState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Green, TEXT("Enter Sprint"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Sprint"));
 	}
 	if (Character)
 	{
@@ -46,7 +46,7 @@ void SprintingState::ExitState(AAdvMovSysCharacter* Character)
 {
 	if (GEngine)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1, FColor::Red, TEXT("Exit Sprint"));
+		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Sprint"));
 	}
 	if (Character)
 	{
