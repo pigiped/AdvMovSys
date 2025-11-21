@@ -30,14 +30,16 @@ void DefaultState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 
 void DefaultState::EnterState(AAdvMovSysCharacter* Character)
 {
+	if (!Character) return;
+
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Default"));
 	}
+
 	// Set character properties for default state
 	Character->SetWalkSpeed(DefaultWalkSpeed);
 	Character->RecalculateCapsuleHalfHeight(DefaultHalfHeight);
-
 }
 
 void DefaultState::ExitState(AAdvMovSysCharacter* Character)

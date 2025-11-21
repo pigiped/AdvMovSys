@@ -130,7 +130,7 @@ void AAdvMovSysCharacter::Sprint(const FInputActionValue& Value)
 		}
 		else
 		{
-			SetCharacterState(&DefaultState::Get());
+			SetCharacterState(GetTargetState());
 		}
 	}
 }
@@ -183,6 +183,7 @@ void AAdvMovSysCharacter::DoProne(const FInputActionValue& Value)
 
 void AAdvMovSysCharacter::DoSlide(const FInputActionValue& Value)
 {
+	UE_LOG(LogTemp, Display, TEXT("we slidin"));
 	if (GetCharacterMovement()->IsMovingOnGround() && GetCharacterMovement()->MaxWalkSpeed >= SprintingState::Get().GetSprintWalkSpeed())
 	{
 		if(Value.Get<bool>() == false)
@@ -320,6 +321,22 @@ CharacterState* AAdvMovSysCharacter::GetTargetState() const
 	FVector End = Start + FVector(0.f, 0.f, DefaultState::Get().GetDefaultHalfHeight() * 2);
 	bool bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
 	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
+	//FCollisionQueryParams QueryParams;
+	//QueryParams.AddIgnoredComponent(Capsule);
+	//QueryParams.AddIgnoredActor(this);
+	//QueryParams.bTraceComplex = true;
+	//bool bBlocked = World->SweepTestByChannel(Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(Capsule->GetScaledCapsuleRadius(), DefaultState::Get().GetDefaultHalfHeight()), QueryParams);
+	//FHitResult HitResult;
+	//World->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(Capsule->GetScaledCapsuleRadius(), DefaultState::Get().GetDefaultHalfHeight()), QueryParams);
+	//DrawDebugCapsule(World, (Start+End)/2, DefaultState::Get().GetDefaultHalfHeight(), Capsule->GetScaledCapsuleRadius(), FQuat::Identity, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
+	//
+	//// Draw purple point at hit location
+	//if (HitResult.bBlockingHit)
+	//{
+	//	DrawDebugPoint(World, HitResult.ImpactPoint, 10.0f, FColor::Purple, false, 2.0f);
+	//}
+	//
+	//UE_LOG(LogTemp, Display, TEXT("HitResult: %s"), *HitResult.ToString());
 
 	if (!bBlocked)
 	{

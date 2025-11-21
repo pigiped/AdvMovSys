@@ -39,6 +39,7 @@ void SprintingState::EnterState(AAdvMovSysCharacter* Character)
 	if (Character)
 	{
 		Character->GetCharacterMovement()->MaxWalkSpeed = SprintWalkSpeed;
+		Character->RecalculateCapsuleHalfHeight(DefaultState::Get().GetDefaultHalfHeight());
 	}
 }
 

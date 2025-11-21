@@ -36,6 +36,8 @@ void ProningState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 
 void ProningState::EnterState(AAdvMovSysCharacter* Character)
 {
+	if (!Character) return;
+	
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Prone"));
@@ -55,6 +57,21 @@ void ProningState::Prone(AAdvMovSysCharacter* Character)
 {
 	if (!Character) return;
 	
+	UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
+	if (!Capsule) return;
+	
+	// Get the current capsule half height before changing it
+	float CurrentHalfHeight = Capsule->GetScaledCapsuleHalfHeight();
+	
+	// Calculate the height difference
+	float HeightDifference = CurrentHalfHeight - PronedHalfHeight;
+	
+	// Adjust the actor's Z position to keep the bottom of the capsule at the same location
+	FVector NewLocation = Character->GetActorLocation();
+	NewLocation.Z -= HeightDifference; // Move down by the difference
+	Character->SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	
+	// Now set the capsule height
 	Character->RecalculateCapsuleHalfHeight(PronedHalfHeight);
 	Character->SetWalkSpeed(PronedWalkSpeed);
 	Character->RecalculateBaseEyeHeight();

@@ -9,6 +9,7 @@
 #include "CrouchingState.h"
 #include "AdvMovSysCharacter.h"
 #include "DrawDebugHelpers.h"
+#include "SprintingState.h"
 #include "Engine/World.h"
 
 
@@ -32,18 +33,12 @@ void SlidingState::HandleInput(AAdvMovSysCharacter* Character, const FInputActio
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Yellow, TEXT("Sliding (state handler)"));
 	}
-	if (Value.Get<bool>())
-	{
-		Slide(Character);
-	}
-	else
-	{
-		UnSlide(Character);
-	}
 }
 
 void SlidingState::EnterState(AAdvMovSysCharacter* Character)
 {
+	Character->SetWalkSpeed(SprintingState::Get().GetSprintWalkSpeed());
+	Slide(Character);
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Green, TEXT("Enter Slide"));
@@ -52,6 +47,7 @@ void SlidingState::EnterState(AAdvMovSysCharacter* Character)
 
 void SlidingState::ExitState(AAdvMovSysCharacter* Character)
 {
+	//UnSlide(Character);
 	if (GEngine)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 10.0f, FColor::Red, TEXT("Exit Slide"));
