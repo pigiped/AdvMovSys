@@ -384,3 +384,22 @@ void AAdvMovSysCharacter::RecalculateCapsuleHalfHeight(float NewHalfHeight)
 	GetMesh()->SetRelativeLocation(NewLocation);
 	UE_LOG(LogTemp, Display, TEXT("Passing from %f to %f, newLocation is %f, before it was: %f"), PresentHeight, NewHalfHeight, NewLocation.Z, OldZ);
 }
+
+void AAdvMovSysCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+	
+	EMovementMode CurrentMode = GetCharacterMovement()->MovementMode;
+	
+	// Character started falling
+	if (CurrentMode == MOVE_Falling && PrevMovementMode != MOVE_Falling)
+	{
+		UE_LOG(LogTemp, Display, TEXT("Character started falling!"));
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Started Falling!"));
+		}
+		
+		bool bTheresALedge = GetWorld()->SweepTestByChannel(GetActorLocation(), GetActorLocation() + FVector(0, 0, -200), FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(GetCapsuleComponent()->GetScaledCapsuleRadius(), GetCapsuleComponent()->GetScaledCapsuleHalfHeight()));
+	}
+}

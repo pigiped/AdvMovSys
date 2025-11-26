@@ -17,5 +17,6 @@ enum class ECharacterMovementState : uint8
 	Sprinting   UMETA(DisplayName = "Sprinting"),
 	Crouching   UMETA(DisplayName = "Crouching"),
 	Proning     UMETA(DisplayName = "Proning"),
-	Sliding     UMETA(DisplayName = "Sliding")
+	Sliding     UMETA(DisplayName = "Sliding"),
+	EdgeGrab    UMETA(DisplayName = "EdgeGrab")
 };
