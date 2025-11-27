@@ -16,6 +16,7 @@
 #include "ProningState.h"
 #include "DefaultState.h"
 #include "SlidingState.h"
+#include "EdgeGrabState.h"
 #include "AdvMovSys.h"
 
 AAdvMovSysCharacter::AAdvMovSysCharacter()
@@ -321,22 +322,7 @@ CharacterState* AAdvMovSysCharacter::GetTargetState() const
 	FVector End = Start + FVector(0.f, 0.f, DefaultState::Get().GetDefaultHalfHeight() * 2);
 	bool bBlocked = World->LineTraceTestByChannel(Start, End, ECollisionChannel::ECC_Visibility);
 	DrawDebugLine(World, Start, End, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
-	//FCollisionQueryParams QueryParams;
-	//QueryParams.AddIgnoredComponent(Capsule);
-	//QueryParams.AddIgnoredActor(this);
-	//QueryParams.bTraceComplex = true;
-	//bool bBlocked = World->SweepTestByChannel(Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(Capsule->GetScaledCapsuleRadius(), DefaultState::Get().GetDefaultHalfHeight()), QueryParams);
-	//FHitResult HitResult;
-	//World->SweepSingleByChannel(HitResult, Start, End, FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(Capsule->GetScaledCapsuleRadius(), DefaultState::Get().GetDefaultHalfHeight()), QueryParams);
-	//DrawDebugCapsule(World, (Start+End)/2, DefaultState::Get().GetDefaultHalfHeight(), Capsule->GetScaledCapsuleRadius(), FQuat::Identity, bBlocked ? FColor::Red : FColor::Green, false, 2.0f, 0, 2.0f);
-	//
-	//// Draw purple point at hit location
-	//if (HitResult.bBlockingHit)
-	//{
-	//	DrawDebugPoint(World, HitResult.ImpactPoint, 10.0f, FColor::Purple, false, 2.0f);
-	//}
-	//
-	//UE_LOG(LogTemp, Display, TEXT("HitResult: %s"), *HitResult.ToString());
+	
 
 	if (!bBlocked)
 	{
@@ -394,12 +380,95 @@ void AAdvMovSysCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, 
 	// Character started falling
 	if (CurrentMode == MOVE_Falling && PrevMovementMode != MOVE_Falling)
 	{
-		UE_LOG(LogTemp, Display, TEXT("Character started falling!"));
-		if (GEngine)
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("Started Falling!"));
-		}
-		
-		bool bTheresALedge = GetWorld()->SweepTestByChannel(GetActorLocation(), GetActorLocation() + FVector(0, 0, -200), FQuat::Identity, ECollisionChannel::ECC_Visibility, FCollisionShape::MakeCapsule(GetCapsuleComponent()->GetScaledCapsuleRadius(), GetCapsuleComponent()->GetScaledCapsuleHalfHeight()));
+		// Reset the timer
+		TimeSinceLastLedgeCheck = 0.0f;
 	}
+}
+
+void AAdvMovSysCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	// Continuously check for ledges while falling
+	if (GetCharacterMovement()->IsFalling())
+	{
+		TimeSinceLastLedgeCheck += DeltaTime;
+		
+		// Check at intervals to avoid performance issues
+		if (TimeSinceLastLedgeCheck >= LedgeCheckInterval)
+		{
+			TimeSinceLastLedgeCheck = 0.0f;
+			
+			bool bLedgeDetected = CheckForLedge(true); // true = draw debug
+			
+			if (bLedgeDetected)
+			{
+				SetCharacterState(&EdgeGrabState::Get());
+				
+				if (GEngine)
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 2.0f, FColor::Green, TEXT("LEDGE GRAB AVAILABLE!"));
+				}
+			}
+		}
+	}
+	else
+	{
+		// Reset timer when not falling
+		TimeSinceLastLedgeCheck = 0.0f;
+	}
+}
+
+bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+	if (!Capsule || !GetWorld())
+	{
+		return false;
+	}
+	
+	// Get character's eye location for better ledge detection
+	FVector EyeLocation;
+	FRotator EyeRotation;
+	GetActorEyesViewPoint(EyeLocation, EyeRotation);
+	
+	// Sweep forward to detect a ledge/wall
+	FVector ForwardVector = GetActorForwardVector();
+	float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
+	float CapsuleHalfHeight = 10.0f;
+	
+	FVector SweepStart = EyeLocation;
+	FVector SweepEnd = EyeLocation + (ForwardVector * CapsuleRadius * 2.5f);
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.bTraceComplex = false;
+	
+	bool bLedgeDetected = GetWorld()->SweepTestByChannel(
+		SweepStart,
+		SweepEnd,
+		FQuat::Identity,
+		ECollisionChannel::ECC_Visibility,
+		FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
+		QueryParams
+	);
+	
+	// Debug visualization
+	if (bDrawDebug)
+	{
+		DrawDebugCapsule(
+			GetWorld(),
+			(SweepStart + SweepEnd) / 2,
+			CapsuleHalfHeight,
+			CapsuleRadius,
+			FQuat::Identity,
+			bLedgeDetected ? FColor::Green : FColor::Red,
+			false,
+			LedgeCheckInterval, // Draw for the duration of the check interval
+			0,
+			2.0f
+		);
+	}
+	
+	return bLedgeDetected;
 }

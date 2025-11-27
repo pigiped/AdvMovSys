@@ -76,6 +76,11 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Character Movement")
 	ECharacterMovementState PreviousMovementState;
 
+	/** Ledge detection properties */
+	UPROPERTY(EditAnywhere, Category = "Ledge Grab", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	float LedgeCheckInterval = 0.1f; // Check for ledges every 0.1 seconds while falling
+	
+	float TimeSinceLastLedgeCheck = 0.0f;
 
 public:
 
@@ -89,6 +94,12 @@ protected:
 
 	/** Called when the character's movement mode changes */
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
+
+	/** Called every frame */
+	virtual void Tick(float DeltaTime) override;
+
+	/** Helper function to detect ledges in front of the character */
+	bool CheckForLedge(bool bDrawDebug = false);
 
 protected:
 

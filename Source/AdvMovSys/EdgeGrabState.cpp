@@ -32,6 +32,17 @@ void EdgeGrabState::EnterState(AAdvMovSysCharacter* Character)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("EdgeGrabState: EnterState"));
 	}
+
+	// 1
+	// Lock sprint, crouch, prone, slide. 
+	// Maybe change action mapping to one that moves left and right in edgegrab and up makes stand on the ledge down drops down
+	
+	// 2
+	// Freeze height position, disable gravity and go to fly mode?
+	// Ensure the character is facing the correct direction during edge grab
+
+	// 3
+	// set animation
 }
 void EdgeGrabState::ExitState(AAdvMovSysCharacter* Character)
 {
