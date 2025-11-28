@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "CharacterState.h"
 
+class UInputMappingContext;
+
 /**
  * 
  */
@@ -21,4 +23,12 @@ public:
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
 	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::EdgeGrab; }
+
+private:
+	UInputMappingContext* IMC_Default;
+	UInputMappingContext* IMC_EdgeGrab;
+	void SetMappingContext(AAdvMovSysCharacter* Character, UInputMappingContext* OldContext, UInputMappingContext* NewContext);
+	void LoadInputMappingContexts();
+	void ClearInputMappingContexts();
+
 };
