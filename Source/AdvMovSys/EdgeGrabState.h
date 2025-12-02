@@ -23,10 +23,14 @@ public:
 	virtual void EnterState(AAdvMovSysCharacter* Character) override;
 	virtual void ExitState(AAdvMovSysCharacter* Character) override;
 	virtual ECharacterMovementState GetStateType() const override { return ECharacterMovementState::EdgeGrab; }
+	void SetLedgeNormal(const FVector& Normal) { LedgeNormal = Normal; }
+	FVector GetLedgeNormal() const { return LedgeNormal; }
+	void ClearLedgeNormal() { LedgeNormal = FVector::ZeroVector; }
 
 private:
 	UInputMappingContext* IMC_Default;
 	UInputMappingContext* IMC_EdgeGrab;
+	FVector LedgeNormal;
 	void SetMappingContext(AAdvMovSysCharacter* Character, UInputMappingContext* OldContext, UInputMappingContext* NewContext);
 	void LoadInputMappingContexts();
 	void ClearInputMappingContexts();

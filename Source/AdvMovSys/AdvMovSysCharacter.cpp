@@ -71,10 +71,15 @@ void AAdvMovSysCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(MouseLookAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Look);
 		EnhancedInputComponent->BindAction(WalkAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Walk);
 		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Sprint);
+		
+		// Alter pose
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AAdvMovSysCharacter::DoCrouch);
 		EnhancedInputComponent->BindAction(ProneAction, ETriggerEvent::Started, this, &AAdvMovSysCharacter::DoProne);
 		EnhancedInputComponent->BindAction(SlideAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::DoSlide);
-
+		
+		// Edging
+		EnhancedInputComponent->BindAction(LedgeMoveAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::LedgeMove);
+		EnhancedInputComponent->BindAction(LedgeDropAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::LedgeDrop);
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AAdvMovSysCharacter::Look);
@@ -103,8 +108,6 @@ void AAdvMovSysCharacter::Look(const FInputActionValue& Value)
 	// route the input
 	DoLook(LookAxisVector.X, LookAxisVector.Y);
 }
-
-
 
 void AAdvMovSysCharacter::Walk(const FInputActionValue& Value)
 {
@@ -388,10 +391,13 @@ void AAdvMovSysCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, 
 void AAdvMovSysCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
+	UE_LOG(LogTemp, Display, TEXT("%s"), *UEnum::GetValueAsString(GetCurrentMovementState()));
+
 	// Continuously check for ledges while falling
 	if (GetCharacterMovement()->IsFalling())
 	{
+		
 		TimeSinceLastLedgeCheck += DeltaTime;
 		
 		// Check at intervals to avoid performance issues
@@ -443,15 +449,31 @@ bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.bTraceComplex = false;
-	
-	bool bLedgeDetected = GetWorld()->SweepTestByChannel(
+	FHitResult LedgeHitResult;
+	//bool bLedgeDetected = GetWorld()->SweepTestByChannel(
+	//	SweepStart,
+	//	SweepEnd,
+	//	FQuat::Identity,
+	//	LedgeTraceChannel,
+	//	FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
+	//	QueryParams
+	//);
+
+	GetWorld()->SweepSingleByChannel(
+		OUT LedgeHitResult,
 		SweepStart,
 		SweepEnd,
 		FQuat::Identity,
-		ECollisionChannel::ECC_Visibility,
+		LedgeTraceChannel,
 		FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
 		QueryParams
 	);
+
+	if(LedgeHitResult.bBlockingHit)
+	{
+		DrawDebugLine(GetWorld(), LedgeHitResult.Location, LedgeHitResult.Location + FVector(10, 0, 0), FColor::Red, false, 1);
+		EdgeGrabState::Get().SetLedgeNormal(LedgeHitResult.ImpactNormal);
+	}
 	
 	// Debug visualization
 	if (bDrawDebug)
@@ -462,7 +484,7 @@ bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
 			CapsuleHalfHeight,
 			CapsuleRadius,
 			FQuat::Identity,
-			bLedgeDetected ? FColor::Green : FColor::Red,
+			LedgeHitResult.bBlockingHit ? FColor::Green : FColor::Red,
 			false,
 			LedgeCheckInterval, // Draw for the duration of the check interval
 			0,
@@ -470,5 +492,33 @@ bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
 		);
 	}
 	
-	return bLedgeDetected;
+	return LedgeHitResult.bBlockingHit;
+}
+
+void AAdvMovSysCharacter::LedgeMove(const FInputActionValue& Value)
+{
+	// input is a Vector2D
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	if (GetController() != nullptr)
+	{
+		FRotator LedgeFacingRotation = (-EdgeGrabState::Get().GetLedgeNormal()).ToOrientationRotator();
+
+
+		// find out which way is forward
+		const FRotator Rotation = GetController()->GetControlRotation();
+		const FRotator YawRotation(0, LedgeFacingRotation.Yaw, 0);
+
+
+		// get right vector 
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		// add movement 
+		AddMovementInput(RightDirection, MovementVector.X);
+	}
+}
+
+void AAdvMovSysCharacter::LedgeDrop(const FInputActionValue& Value)
+{
+	SetCharacterState(&DefaultState::Get());
+	TimeSinceLastLedgeCheck = -1.0f;
 }

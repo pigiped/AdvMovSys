@@ -52,8 +52,10 @@ void EdgeGrabState::EnterState(AAdvMovSysCharacter* Character)
 	Character->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 	Character->GetCharacterMovement()->Velocity = FVector::ZeroVector;
 	Character->GetCharacterMovement()->StopMovementImmediately();
-	
+	FRotator LedgeFacingRotation = (-LedgeNormal).ToOrientationRotator();
+	Character->SetActorRotation(LedgeFacingRotation);
 
+	Character->GetCharacterMovement()->bOrientRotationToMovement = false;
 	// 3
 	// set animation
 }
@@ -63,8 +65,16 @@ void EdgeGrabState::ExitState(AAdvMovSysCharacter* Character)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Yellow, TEXT("EdgeGrabState: ExitState"));
 	}
-
 	SetMappingContext(Character, IMC_EdgeGrab, IMC_Default);
+	Character->bSimGravityDisabled = false;
+	Character->GetCharacterMovement()->GravityScale = 1.0f;
+	Character->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Falling);
+	if (Character->GetCharacterMovement()->Velocity.IsNearlyZero())
+	{
+		Character->GetCharacterMovement()->Velocity = FVector(0.f, 0.f, -100.f);
+	}
+	Character->GetCharacterMovement()->bOrientRotationToMovement = true;
+
 }
 
 void EdgeGrabState::SetMappingContext(AAdvMovSysCharacter* Character, UInputMappingContext* OldContext, UInputMappingContext* NewContext)

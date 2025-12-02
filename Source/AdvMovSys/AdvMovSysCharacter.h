@@ -66,6 +66,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* SlideAction;
 
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* LedgeMoveAction;
+
+	UPROPERTY(EditAnywhere, Category = "Input")
+	UInputAction* LedgeDropAction;
+
 	/** Current state (state pattern) */
 	CharacterState* CurrentState = nullptr;
 	CharacterState* PreviousState = nullptr;
@@ -80,6 +86,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Ledge Grab", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float LedgeCheckInterval = 0.1f; // Check for ledges every 0.1 seconds while falling
 	
+	UPROPERTY(EditAnywhere, Category = "Ledge Grab")
+	TEnumAsByte<ECollisionChannel> LedgeTraceChannel = ECC_Visibility;
+	
+
 	float TimeSinceLastLedgeCheck = 0.0f;
 
 public:
@@ -110,6 +120,8 @@ protected:
 	void DoCrouch(const FInputActionValue& Value);
 	void DoProne(const FInputActionValue& Value);
 	void DoSlide(const FInputActionValue& Value);
+	void LedgeMove(const FInputActionValue& Value);
+	void LedgeDrop(const FInputActionValue& Value);
 
 	/** Called for looking input */
 	void Look(const FInputActionValue& Value);
