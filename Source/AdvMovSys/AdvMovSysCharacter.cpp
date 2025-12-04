@@ -53,6 +53,9 @@ AAdvMovSysCharacter::AAdvMovSysCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	FollowCamera->bUsePawnControlRotation = false;
 
+	LedgeCheckOffsetComp = CreateDefaultSubobject<USceneComponent>(TEXT("LedgeCheckOffset"));
+	LedgeCheckOffsetComp->SetupAttachment(RootComponent);
+
 	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
 	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
 }
@@ -374,6 +377,7 @@ void AAdvMovSysCharacter::RecalculateCapsuleHalfHeight(float NewHalfHeight)
 	UE_LOG(LogTemp, Display, TEXT("Passing from %f to %f, newLocation is %f, before it was: %f"), PresentHeight, NewHalfHeight, NewLocation.Z, OldZ);
 }
 
+
 void AAdvMovSysCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
 {
 	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
@@ -392,7 +396,8 @@ void AAdvMovSysCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	UE_LOG(LogTemp, Display, TEXT("%s"), *UEnum::GetValueAsString(GetCurrentMovementState()));
+	DrawDebugSphere(GetWorld(), LedgeCheckOffsetComp->GetRelativeLocation(), 10.0f, 12, FColor::Blue, false, LedgeCheckInterval);
+
 
 	// Continuously check for ledges while falling
 	if (GetCharacterMovement()->IsFalling())
@@ -405,9 +410,8 @@ void AAdvMovSysCharacter::Tick(float DeltaTime)
 		{
 			TimeSinceLastLedgeCheck = 0.0f;
 			
-			bool bLedgeDetected = CheckForLedge(true); // true = draw debug
 			
-			if (bLedgeDetected)
+			if (CanGrabLedge())
 			{
 				SetCharacterState(&EdgeGrabState::Get());
 				
@@ -425,42 +429,33 @@ void AAdvMovSysCharacter::Tick(float DeltaTime)
 	}
 }
 
-bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
+void AAdvMovSysCharacter::CheckForLedges(FHitResult& HitResult, FVector CheckOffset = FVector::ZeroVector)
 {
 	UCapsuleComponent* Capsule = GetCapsuleComponent();
 	if (!Capsule || !GetWorld())
 	{
-		return false;
+		return;
 	}
-	
+
 	// Get character's eye location for better ledge detection
 	FVector EyeLocation;
 	FRotator EyeRotation;
 	GetActorEyesViewPoint(EyeLocation, EyeRotation);
-	
+
 	// Sweep forward to detect a ledge/wall
 	FVector ForwardVector = GetActorForwardVector();
 	float CapsuleRadius = Capsule->GetScaledCapsuleRadius();
 	float CapsuleHalfHeight = 10.0f;
-	
+
 	FVector SweepStart = EyeLocation;
-	FVector SweepEnd = EyeLocation + (ForwardVector * CapsuleRadius * 2.5f);
-	
+	FVector SweepEnd = CheckOffset;
+
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.bTraceComplex = false;
-	FHitResult LedgeHitResult;
-	//bool bLedgeDetected = GetWorld()->SweepTestByChannel(
-	//	SweepStart,
-	//	SweepEnd,
-	//	FQuat::Identity,
-	//	LedgeTraceChannel,
-	//	FCollisionShape::MakeCapsule(CapsuleRadius, CapsuleHalfHeight),
-	//	QueryParams
-	//);
 
 	GetWorld()->SweepSingleByChannel(
-		OUT LedgeHitResult,
+		OUT HitResult,
 		SweepStart,
 		SweepEnd,
 		FQuat::Identity,
@@ -469,52 +464,37 @@ bool AAdvMovSysCharacter::CheckForLedge(bool bDrawDebug)
 		QueryParams
 	);
 
-	if(LedgeHitResult.bBlockingHit)
+	DrawDebugCapsule(
+		GetWorld(),
+		(SweepStart + SweepEnd) / 2,
+		CapsuleHalfHeight,
+		CapsuleRadius,
+		FQuat::Identity,
+		HitResult.bBlockingHit ? FColor::Green : FColor::Red,
+		false,
+		LedgeCheckInterval, // Draw for the duration of the check interval
+		0,
+		2.0f
+	);
+}
+
+bool AAdvMovSysCharacter::CanGrabLedge()
+{
+
+
+	FHitResult LedgeHitResult;
+	CheckForLedges(LedgeHitResult, LedgeCheckOffsetComp->GetComponentLocation());
+	if (LedgeHitResult.bBlockingHit)
 	{
-		DrawDebugLine(GetWorld(), LedgeHitResult.Location, LedgeHitResult.Location + FVector(10, 0, 0), FColor::Red, false, 1);
 		EdgeGrabState::Get().SetLedgeNormal(LedgeHitResult.ImpactNormal);
+		return true;
 	}
-	
-	// Debug visualization
-	if (bDrawDebug)
-	{
-		DrawDebugCapsule(
-			GetWorld(),
-			(SweepStart + SweepEnd) / 2,
-			CapsuleHalfHeight,
-			CapsuleRadius,
-			FQuat::Identity,
-			LedgeHitResult.bBlockingHit ? FColor::Green : FColor::Red,
-			false,
-			LedgeCheckInterval, // Draw for the duration of the check interval
-			0,
-			2.0f
-		);
-	}
-	
-	return LedgeHitResult.bBlockingHit;
+	return false;
 }
 
 void AAdvMovSysCharacter::LedgeMove(const FInputActionValue& Value)
 {
-	// input is a Vector2D
-	FVector2D MovementVector = Value.Get<FVector2D>();
-	if (GetController() != nullptr)
-	{
-		FRotator LedgeFacingRotation = (-EdgeGrabState::Get().GetLedgeNormal()).ToOrientationRotator();
-
-
-		// find out which way is forward
-		const FRotator Rotation = GetController()->GetControlRotation();
-		const FRotator YawRotation(0, LedgeFacingRotation.Yaw, 0);
-
-
-		// get right vector 
-		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
-
-		// add movement 
-		AddMovementInput(RightDirection, MovementVector.X);
-	}
+	EdgeGrabState::Get().HandleInput(this, Value);
 }
 
 void AAdvMovSysCharacter::LedgeDrop(const FInputActionValue& Value)

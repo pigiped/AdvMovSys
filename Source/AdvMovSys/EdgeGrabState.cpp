@@ -31,6 +31,26 @@ void EdgeGrabState::HandleInput(AAdvMovSysCharacter* Character, const FInputActi
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("EdgeGrabState: HandleInput"));
 	}
+
+	// input is a Vector2D
+	FVector2D MovementVector = Value.Get<FVector2D>();
+	
+	if (Character->GetController() != nullptr)
+	{
+		FRotator LedgeFacingRotation = (-EdgeGrabState::Get().GetLedgeNormal()).ToOrientationRotator();
+
+
+		// find out which way is forward
+		const FRotator Rotation = Character->GetController()->GetControlRotation();
+		const FRotator YawRotation(0, LedgeFacingRotation.Yaw, 0);
+
+
+		// get right vector 
+		const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+		// add movement 
+		Character->AddMovementInput(RightDirection, MovementVector.X);
+	}
 }
 void EdgeGrabState::EnterState(AAdvMovSysCharacter* Character)
 {
@@ -38,6 +58,8 @@ void EdgeGrabState::EnterState(AAdvMovSysCharacter* Character)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("EdgeGrabState: EnterState"));
 	}
+
+	UCharacterMovementComponent* MovementComp = Character->GetCharacterMovement();
 
 	// 1
 	// Lock sprint, crouch, prone, slide. 
@@ -49,9 +71,11 @@ void EdgeGrabState::EnterState(AAdvMovSysCharacter* Character)
 	// Freeze height position, disable gravity and go to fly mode?
 	// Ensure the character is facing the correct direction during edge grab
 	Character->bSimGravityDisabled = true;
-	Character->GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
-	Character->GetCharacterMovement()->Velocity = FVector::ZeroVector;
-	Character->GetCharacterMovement()->StopMovementImmediately();
+	MovementComp->SetMovementMode(EMovementMode::MOVE_Flying);
+	MovementComp->BrakingDecelerationFlying = 4000.0f;
+	MovementComp->MaxFlySpeed = 200.0f;
+	MovementComp->Velocity = FVector::ZeroVector;
+	MovementComp->StopMovementImmediately();
 	FRotator LedgeFacingRotation = (-LedgeNormal).ToOrientationRotator();
 	Character->SetActorRotation(LedgeFacingRotation);
 

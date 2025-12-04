@@ -72,6 +72,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	UInputAction* LedgeDropAction;
 
+	UPROPERTY(EditAnywhere, Category = "Edging")
+	USceneComponent* LedgeCheckOffsetComp;
+
 	/** Current state (state pattern) */
 	CharacterState* CurrentState = nullptr;
 	CharacterState* PreviousState = nullptr;
@@ -109,7 +112,7 @@ protected:
 	virtual void Tick(float DeltaTime) override;
 
 	/** Helper function to detect ledges in front of the character */
-	bool CheckForLedge(bool bDrawDebug = false);
+	bool CanGrabLedge();
 
 protected:
 
@@ -175,6 +178,10 @@ public:
 
 	void SetWalkSpeed(float NewWalkSpeed);
 	void RecalculateCapsuleHalfHeight(float NewHalfHeight);
+
+private:
+	/** Helper function to check for ledges at an offset from the character eye*/
+	void CheckForLedges(FHitResult& HitResult, FVector CheckOffset);
 
 };
 
